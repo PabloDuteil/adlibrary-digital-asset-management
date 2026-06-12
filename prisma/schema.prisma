@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Core hierarchy ──────────────────────────────────────────────
+// Concept -> Variation (format) -> Localization (market) -> AssetFile (media)
+
+enum AdType {
+  STATIC
+  VIDEO
+  MOTION
+  CARROUSEL
+  UGC
+}
+
+enum AssetSource {
+  FIGMA
+  UPLOAD
+  DRIVE_IMPORT
+  SHEET_IMPORT
+}
+
+// Display labels: 1:1, 4:5, 9:16, 1.91:1 (see lib/formats.ts)
+enum AdFormat {
+  R1x1
+  R4x5
+  R9x16
+  R1_91x1
+  OTHER
+}
+
+enum NameStatus {
+  CONFORMING
+  NEEDS_REVIEW
+}
+
+model Concept {
+  id           String      @id @default(cuid())
+  title        String
+  batch        String // JAN..DEC
+  type         AdType
+  source       AssetSource
+  figmaFileKey String?
+  figmaNodeId  String?
+  thumbnailUrl String?
+  sourceUrl    String? // link back to Figma frame / Drive file
+
+  // Structured nomenclature (values reference NomenclatureTerm.value)
+  name        String     @unique // full generated kebab-case name
+  nameStatus  NameStatus @default(CONFORMING)
+  nameIssues  String[] // parser warnings for NEEDS_REVIEW names
+  awareness   String? // al.
+  angle       String? // a.
+  valueProp   String? // vp.
+  feature     String? // f.
+  tone        String? // t.
+  segment     String? // s.
+  persona     String? // p.
+  conceptCode String? // c.
+  hook        String? // h.
+  conceptVars String[] // cv. (freeform, ordered)
+
+  variations   Variation[]
+  distribution DistributionStatus?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([batch])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Variation {
+  id          String   @id @default(cuid())
+  conceptId   String
+  concept     Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  format      AdFormat
+  rawFormat   String? // original ratio/frame name when format = OTHER
+  figmaNodeId String?
+
+  localizations Localization[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([conceptId, format, rawFormat])
+  @@index([format])
+}
+
+model Localization {
+  id          String    @id @default(cuid())
+  variationId String
+  variation   Variation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  market      String // m. — fr, es, be, ca, ...
+  language    String // fr, es, nl, en, ...
+
+  assetFiles AssetFile[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([variationId, market, language])
+  @@index([market])
+}
+
+model AssetFile {
+  id             String       @id @default(cuid())
+  localizationId String
+  localization   Localization @relation(fields: [localizationId], references: [id], onDelete: Cascade)
+  fileKey        String // key in object storage
+  mimeType       String
+  width          Int?
+  height         Int?
+  durationS      Float? // video duration in seconds
+  fileSize       Int
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ── Distribution tracking (per concept, Phase 3 adds auto-detect) ──
+
+model DistributionStatus {
+  conceptId  String    @id
+  concept    Concept   @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  meta       Boolean   @default(false)
+  metaAt     DateTime?
+  metaBy     String?
+  linkedin   Boolean   @default(false)
+  linkedinAt DateTime?
+  linkedinBy String?
+  google     Boolean   @default(false)
+  googleAt   DateTime?
+  googleBy   String?
+}
+
+// ── Nomenclature glossary (source of truth for the naming generator) ──
+
+enum Dimension {
+  BATCH
+  FORMAT // ft. (legacy t. by position)
+  AWARENESS // al.
+  ANGLE // a.
+  VALUE_PROP // vp.
+  FEATURE // f.
+  TONE // t.
+  SEGMENT // s.
+  PERSONA // p.
+  CONCEPT // c.
+  HOOK // h.
+  CONCEPT_VAR // cv. (freeform)
+  MARKET // m.
+}
+
+model NomenclatureTerm {
+  id         String    @id @default(cuid())
+  dimension  Dimension
+  prefix     String // "" for BATCH, "ft." for FORMAT, ...
+  value      String // kebab-case token used inside names
+  label      String // human-readable label
+  definition String // explanation shown in the Nomenclature tab
+
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@unique([dimension, value])
+  @@index([dimension])
+}
+
+// ── Quarterly targets for the dashboard ────────────────────────
+
+model Target {
+  id          String @id @default(cuid())
+  quarter     String // e.g. "2026-Q2"
+  metric      String // total_assets | concepts | videos | statics | market:<code> ...
+  targetValue Int
+
+  @@unique([quarter, metric])
+}
