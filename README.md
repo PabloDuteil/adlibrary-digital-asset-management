@@ -93,7 +93,19 @@ Tests: `npm test` (name parser, Figma URL parsing, format detection).
     run is logged (`SyncRun`) with unmatched ad-name samples. LinkedIn/Google
     share the same adapter interface, pending API credentials.
 - **Phase 4 — Video auto-naming** (keyframes + transcript pipeline) — later
-- **Migration** (GSheet + Drive one-off import) — later; the parser is ready for it
+- **Migration** ✅ one-off import of the legacy "Ad Creative Lab - monitoring"
+  Google Sheet (Content tracker tab):
+  ```bash
+  # In the Sheet: File → Download → CSV (Content tracker tab open), then:
+  npx tsx scripts/migrate-sheet.ts content-tracker.csv            # dry-run report
+  npx tsx scripts/migrate-sheet.ts content-tracker.csv --apply    # write
+  ```
+  Legacy `t.`-format names are converted to the canonical `ft.` convention;
+  off-convention rows are imported and flagged `NEEDS_REVIEW` (never dropped);
+  Meta/Google/LinkedIn checkboxes become distribution state stamped
+  `sheet-migration`; concepts are backdated to their batch month; re-running
+  skips everything already in the Library (idempotent, cross-convention).
+  Drive asset files can be attached afterwards from each concept's detail page.
 
 ## Deploying
 
