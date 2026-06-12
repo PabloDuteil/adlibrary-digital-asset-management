@@ -88,7 +88,7 @@ async function main() {
         );
       }
     }
-    await createConceptWithAssets({
+    const concept = await createConceptWithAssets({
       title: demo.title,
       name: demo.name,
       nameStatus: issues.length === 0 ? "CONFORMING" : "NEEDS_REVIEW",
@@ -99,8 +99,29 @@ async function main() {
       createdBy: "seed@alan.eu",
       variations,
     });
+    // Backdate to the batch month so the dashboard quarter filter has data to slice.
+    const monthIndex = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"].indexOf(fields.batch ?? "JAN");
+    await prisma.concept.update({
+      where: { id: concept.id },
+      data: { createdAt: new Date(Date.UTC(new Date().getUTCFullYear(), monthIndex, 15)) },
+    });
     console.log(`created: ${demo.title} (${variations.length} formats × ${demo.markets.length} markets)`);
   }
+
+  // Demo quarterly targets so the progress section renders.
+  const year = new Date().getUTCFullYear();
+  for (const [quarter, metric, targetValue] of [
+    [`${year}-Q1`, "concepts", 5],
+    [`${year}-Q1`, "total_assets", 40],
+    [`${year}-Q1`, "statics", 4],
+  ] as const) {
+    await prisma.target.upsert({
+      where: { quarter_metric: { quarter, metric } },
+      create: { quarter, metric, targetValue },
+      update: { targetValue },
+    });
+  }
+  console.log("seeded demo targets");
 }
 
 main()
