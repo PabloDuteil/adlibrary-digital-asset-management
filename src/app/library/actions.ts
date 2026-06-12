@@ -37,6 +37,7 @@ export async function toggleDistribution(conceptId: string, channel: Channel, va
     },
   });
   revalidatePath("/library");
+  revalidatePath("/distribution");
 }
 
 async function nameStatusFor(fields: NomenclatureFields): Promise<{

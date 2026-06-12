@@ -62,6 +62,7 @@ Required for full functionality:
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google SSO (or set `AUTH_DEV_BYPASS=true`) |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | production file storage |
 | `ANTHROPIC_API_KEY` | AI auto-naming proposals (optional) |
+| `META_ACCESS_TOKEN` / `META_AD_ACCOUNT_ID` | distribution auto-detect from Meta (optional) |
 
 Tests: `npm test` (name parser, Figma URL parsing, format detection).
 
@@ -77,8 +78,20 @@ Tests: `npm test` (name parser, Figma URL parsing, format detection).
     market, channel, and every nomenclature dimension
   - Inline Meta/LinkedIn/Google checkboxes (who + when recorded)
   - PNG export per asset; asset detail view with editable fields
-- **Phase 2 — Dashboard** ⏳ placeholder with live top-line counts; full metrics next
-- **Phase 3 — Distribution auto-detect** (Meta/Google Ads APIs) — investigate as follow-up
+- **Phase 2 — Dashboard** ✅
+  - Quarter filter (or all-time); concepts / variations / assets-delivered counters
+  - Static-video-motion split, assets per market, format × market cross-tab
+  - Quarterly targets with inline editing and progress bars
+- **Phase 3 — Distribution** ✅
+  - Distribution tab: dense concept × channel matrix with optimistic toggles,
+    who+when audit, filters (status, missing-on-channel, batch, type, search)
+  - Bulk actions: select any number of concepts, mark/unmark a channel at once
+  - Auto-detect from Meta: pulls live ad names via the Marketing API and matches
+    them to concepts by nomenclature (exact → prefix → parsed-field tiers;
+    ambiguity is reported, never guessed); set `META_ACCESS_TOKEN` +
+    `META_AD_ACCOUNT_ID` to enable. Sync only ever marks, never un-marks; each
+    run is logged (`SyncRun`) with unmatched ad-name samples. LinkedIn/Google
+    share the same adapter interface, pending API credentials.
 - **Phase 4 — Video auto-naming** (keyframes + transcript pipeline) — later
 - **Migration** (GSheet + Drive one-off import) — later; the parser is ready for it
 

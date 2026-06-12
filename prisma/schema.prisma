@@ -140,6 +140,22 @@ model DistributionStatus {
   googleBy   String?
 }
 
+// One auto-detect run against a channel's ads API. Kept as an audit trail
+// so the team can see when distribution state was last reconciled and which
+// live ad names could not be matched to a concept.
+model SyncRun {
+  id          String   @id @default(cuid())
+  channel     String // meta | linkedin | google
+  ranAt       DateTime @default(now())
+  ranBy       String?
+  adsSeen     Int
+  matched     Int // ads matched to a concept
+  newlyMarked Int // concepts flipped to distributed by this run
+  unmatched   String[] // sample of ad names without a matching concept
+
+  @@index([ranAt])
+}
+
 // ── Nomenclature glossary (source of truth for the naming generator) ──
 
 enum Dimension {
